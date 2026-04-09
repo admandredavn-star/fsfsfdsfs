@@ -72,29 +72,63 @@ class ConfigMenuView(discord.ui.View):
         super().__init__(timeout=None)
         self.bot = bot_instance
     
-    @discord.ui.button(label="Configurar Cargos", emoji="👥", style=discord.ButtonStyle.primary, custom_id="config_roles", row=0)
+    @discord.ui.button(label="Configurar Cargos", emoji="👥", style=discord.ButtonStyle.primary, custom_id="config_roles_button")
     async def config_roles_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        view = RoleConfigView(self.bot)
-        embed = await create_role_config_embed(self.bot, interaction.guild)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        # IMPORTANTE: Defer a resposta primeiro para evitar timeout
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Criar a view de configuração de cargos
+            view = RoleConfigView(self.bot)
+            
+            # Atualizar as opções dos selects com os cargos do servidor
+            await view.update_options(interaction.guild)
+            
+            # Criar embed informativo
+            embed = await create_role_config_embed(self.bot, interaction.guild)
+            
+            # Enviar a resposta
+            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+            
+        except Exception as e:
+            print(f"Erro no botão de cargos: {e}")
+            await interaction.followup.send(
+                "❌ Ocorreu um erro ao abrir o menu de cargos. Tente novamente.",
+                ephemeral=True
+            )
     
     @discord.ui.button(label="Configurar Canais", emoji="📺", style=discord.ButtonStyle.primary, custom_id="config_channels", row=0)
     async def config_channels_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        view = ChannelConfigView(self.bot)
-        await view.update_options(interaction.guild)
-        embed = await create_channel_config_embed(self.bot, interaction.guild)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        try:
+            view = ChannelConfigView(self.bot)
+            await view.update_options(interaction.guild)
+            embed = await create_channel_config_embed(self.bot, interaction.guild)
+            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        except Exception as e:
+            print(f"Erro no botão de canais: {e}")
+            await interaction.followup.send("❌ Erro ao abrir configuração de canais.", ephemeral=True)
     
     @discord.ui.button(label="Configurar Categorias", emoji="📂", style=discord.ButtonStyle.primary, custom_id="config_categories", row=1)
     async def config_categories_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        view = CategoryConfigView(self.bot)
-        embed = await create_category_config_embed(self.bot)
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        try:
+            view = CategoryConfigView(self.bot)
+            embed = await create_category_config_embed(self.bot)
+            await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        except Exception as e:
+            print(f"Erro no botão de categorias: {e}")
+            await interaction.followup.send("❌ Erro ao abrir configuração de categorias.", ephemeral=True)
     
     @discord.ui.button(label="Ver Configurações", emoji="📊", style=discord.ButtonStyle.secondary, custom_id="view_config", row=1)
     async def view_config_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        embed = await create_full_config_embed(self.bot, interaction.guild)
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        try:
+            embed = await create_full_config_embed(self.bot, interaction.guild)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            print(f"Erro ao ver configurações: {e}")
+            await interaction.followup.send("❌ Erro ao carregar configurações.", ephemeral=True)
 
 class RoleConfigView(discord.ui.View):
     """View para configuração de cargos"""
@@ -110,10 +144,23 @@ class RoleConfigView(discord.ui.View):
         row=0
     )
     async def claim_roles_select(self, interaction: discord.Interaction, select: discord.ui.Select):
-        roles = [int(role_id) for role_id in select.values] if select.values else []
-        self.bot.configs['claim_roles'] = roles
-        await self.bot.save_data()
-        await interaction.response.send_message(f"✅ Cargos para assumir tickets atualizados!", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            roles = [int(role_id) for role_id in select.values] if select.values else []
+            self.bot.configs['claim_roles'] = roles
+            await self.bot.save_data()
+            
+            await interaction.followup.send(
+                f"✅ Cargos para **assumir** tickets atualizados! ({len(roles)} cargos)",
+                ephemeral=True
+            )
+        except Exception as e:
+            print(f"Erro ao salvar cargos de assumir: {e}")
+            await interaction.followup.send(
+                "❌ Erro ao salvar configuração. Tente novamente.",
+                ephemeral=True
+            )
     
     @discord.ui.select(
         placeholder="🔒 Cargos que podem FECHAR tickets",
@@ -123,10 +170,23 @@ class RoleConfigView(discord.ui.View):
         row=1
     )
     async def close_roles_select(self, interaction: discord.Interaction, select: discord.ui.Select):
-        roles = [int(role_id) for role_id in select.values] if select.values else []
-        self.bot.configs['close_roles'] = roles
-        await self.bot.save_data()
-        await interaction.response.send_message(f"✅ Cargos para fechar tickets atualizados!", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            roles = [int(role_id) for role_id in select.values] if select.values else []
+            self.bot.configs['close_roles'] = roles
+            await self.bot.save_data()
+            
+            await interaction.followup.send(
+                f"✅ Cargos para **fechar** tickets atualizados! ({len(roles)} cargos)",
+                ephemeral=True
+            )
+        except Exception as e:
+            print(f"Erro ao salvar cargos de fechar: {e}")
+            await interaction.followup.send(
+                "❌ Erro ao salvar configuração. Tente novamente.",
+                ephemeral=True
+            )
     
     @discord.ui.select(
         placeholder="👀 Cargos que podem ACESSAR/VER tickets",
@@ -136,41 +196,81 @@ class RoleConfigView(discord.ui.View):
         row=2
     )
     async def access_roles_select(self, interaction: discord.Interaction, select: discord.ui.Select):
-        roles = [int(role_id) for role_id in select.values] if select.values else []
-        self.bot.configs['access_roles'] = roles
-        await self.bot.save_data()
-        await interaction.response.send_message(f"✅ Cargos para acessar tickets atualizados!", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            roles = [int(role_id) for role_id in select.values] if select.values else []
+            self.bot.configs['access_roles'] = roles
+            await self.bot.save_data()
+            
+            await interaction.followup.send(
+                f"✅ Cargos para **acessar** tickets atualizados! ({len(roles)} cargos)",
+                ephemeral=True
+            )
+        except Exception as e:
+            print(f"Erro ao salvar cargos de acesso: {e}")
+            await interaction.followup.send(
+                "❌ Erro ao salvar configuração. Tente novamente.",
+                ephemeral=True
+            )
     
     async def update_options(self, guild: discord.Guild):
         """Atualiza as opções dos selects com os cargos do servidor"""
         role_options = []
-        for role in guild.roles[1:50]:  # Pula @everyone
-            if not role.managed and role.name != "@everyone":
+        
+        # Pega todos os cargos (exceto @everyone)
+        for role in sorted(guild.roles, key=lambda r: r.position, reverse=True):
+            if role.name != "@everyone" and not role.managed:
+                # Adiciona emoji baseado no tipo de cargo
+                emoji = "👑" if role.permissions.administrator else "👔"
+                
                 role_options.append(
                     discord.SelectOption(
                         label=role.name[:100],
                         value=str(role.id),
-                        emoji="👔" if role.permissions.administrator else "👤"
+                        description=f"Posição: {role.position}",
+                        emoji=emoji,
+                        default=False  # Será atualizado abaixo
                     )
                 )
         
         if role_options:
-            # Atualiza cada select com os cargos e marca os já selecionados
+            # Pega as configurações atuais
             claim_roles = self.bot.configs.get('claim_roles', [])
             close_roles = self.bot.configs.get('close_roles', [])
             access_roles = self.bot.configs.get('access_roles', [])
             
-            for i, select in enumerate(self.children):
-                if isinstance(select, discord.ui.Select):
-                    select.options = role_options
+            # Atualiza cada select
+            for i, child in enumerate(self.children):
+                if isinstance(child, discord.ui.Select):
+                    # Cria uma cópia das opções para este select
+                    child_options = []
                     
-                    # Marca os defaults
-                    if i == 0:  # Claim roles
-                        select.default_values = [str(r) for r in claim_roles]
-                    elif i == 1:  # Close roles
-                        select.default_values = [str(r) for r in close_roles]
-                    elif i == 2:  # Access roles
-                        select.default_values = [str(r) for r in access_roles]
+                    for opt in role_options:
+                        role_id = int(opt.value)
+                        is_default = False
+                        
+                        # Marca como default se estiver na lista correspondente
+                        if i == 0:  # Claim roles
+                            is_default = role_id in claim_roles
+                        elif i == 1:  # Close roles
+                            is_default = role_id in close_roles
+                        elif i == 2:  # Access roles
+                            is_default = role_id in access_roles
+                        
+                        # Cria nova opção com o default correto
+                        child_options.append(
+                            discord.SelectOption(
+                                label=opt.label,
+                                value=opt.value,
+                                description=opt.description,
+                                emoji=opt.emoji,
+                                default=is_default
+                            )
+                        )
+                    
+                    # Limita a 25 opções por select
+                    child.options = child_options[:25]
 
 class ChannelConfigView(discord.ui.View):
     """View para configuração de canais"""
@@ -186,10 +286,15 @@ class ChannelConfigView(discord.ui.View):
         row=0
     )
     async def category_select(self, interaction: discord.Interaction, select: discord.ui.Select):
-        category_id = int(select.values[0])
-        self.bot.configs['ticket_category_id'] = category_id
-        await self.bot.save_data()
-        await interaction.response.send_message(f"✅ Categoria de tickets definida!", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        try:
+            category_id = int(select.values[0])
+            self.bot.configs['ticket_category_id'] = category_id
+            await self.bot.save_data()
+            await interaction.followup.send(f"✅ Categoria de tickets definida!", ephemeral=True)
+        except Exception as e:
+            print(f"Erro ao salvar categoria: {e}")
+            await interaction.followup.send("❌ Erro ao salvar categoria.", ephemeral=True)
     
     @discord.ui.select(
         placeholder="📋 Selecione o canal de logs",
@@ -199,10 +304,15 @@ class ChannelConfigView(discord.ui.View):
         row=1
     )
     async def logs_select(self, interaction: discord.Interaction, select: discord.ui.Select):
-        channel_id = int(select.values[0])
-        self.bot.configs['logs_channel_id'] = channel_id
-        await self.bot.save_data()
-        await interaction.response.send_message(f"✅ Canal de logs definido!", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        try:
+            channel_id = int(select.values[0])
+            self.bot.configs['logs_channel_id'] = channel_id
+            await self.bot.save_data()
+            await interaction.followup.send(f"✅ Canal de logs definido!", ephemeral=True)
+        except Exception as e:
+            print(f"Erro ao salvar canal de logs: {e}")
+            await interaction.followup.send("❌ Erro ao salvar canal de logs.", ephemeral=True)
     
     @discord.ui.select(
         placeholder="🎫 Selecione o canal do painel",
@@ -212,10 +322,15 @@ class ChannelConfigView(discord.ui.View):
         row=2
     )
     async def panel_select(self, interaction: discord.Interaction, select: discord.ui.Select):
-        channel_id = int(select.values[0])
-        self.bot.configs['panel_channel_id'] = channel_id
-        await self.bot.save_data()
-        await interaction.response.send_message(f"✅ Canal do painel definido! Use /painel para enviar.", ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
+        try:
+            channel_id = int(select.values[0])
+            self.bot.configs['panel_channel_id'] = channel_id
+            await self.bot.save_data()
+            await interaction.followup.send(f"✅ Canal do painel definido! Use /painel para enviar.", ephemeral=True)
+        except Exception as e:
+            print(f"Erro ao salvar canal do painel: {e}")
+            await interaction.followup.send("❌ Erro ao salvar canal do painel.", ephemeral=True)
     
     async def update_options(self, guild: discord.Guild):
         """Atualiza as opções dos selects"""
@@ -1092,11 +1207,21 @@ async def on_ready():
                 view = TicketControlView(bot, ticket_id)
                 bot.add_view(view)
     
+    print(f'✅ Views persistentes registradas')
+    
     # Atualiza opções dos selects
     for guild in bot.guilds:
-        for view in [RoleConfigView(bot), ChannelConfigView(bot)]:
-            if hasattr(view, 'update_options'):
-                await view.update_options(guild)
+        try:
+            view = RoleConfigView(bot)
+            await view.update_options(guild)
+        except:
+            pass
+        
+        try:
+            view = ChannelConfigView(bot)
+            await view.update_options(guild)
+        except:
+            pass
 
 @bot.event
 async def on_guild_channel_delete(channel):
@@ -1106,6 +1231,30 @@ async def on_guild_channel_delete(channel):
             del bot.active_tickets[ticket_id]
             await bot.save_data()
             break
+
+@bot.event
+async def on_interaction(interaction: discord.Interaction):
+    """Handler global para interações"""
+    try:
+        # Se for um comando, processa normalmente
+        if interaction.type == discord.InteractionType.application_command:
+            await bot.process_application_commands(interaction)
+        # Se for componente (botão/select), já é processado automaticamente
+    except Exception as e:
+        print(f"Erro na interação: {e}")
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "❌ Ocorreu um erro ao processar sua solicitação.",
+                    ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    "❌ Ocorreu um erro ao processar sua solicitação.",
+                    ephemeral=True
+                )
+        except:
+            pass
 
 # ============================================
 # INICIALIZAÇÃO
